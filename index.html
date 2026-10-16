@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Circle of Fifths & Guitar Fretboard Studio</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#090d16',
+                        darkCard: '#131b2e',
+                        darkBorder: '#1e293b',
+                        accent: '#6366f1',
+                        accentHover: '#4f46e5',
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #090d16; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+
+        @keyframes pulseGlow {
+            0%, 100% { box-shadow: 0 0 15px rgba(99, 102, 241, 0.4); }
+            50% { box-shadow: 0 0 30px rgba(99, 102, 241, 0.8); }
+        }
+        .glow-active { animation: pulseGlow 2s infinite; }
+    </style>
+</head>
+<body class="bg-darkBg text-slate-100 min-h-screen flex flex-col antialiased">
+
+    <!-- Header -->
+    <header class="border-b border-darkBorder bg-darkCard/50 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
+                    <i class="fa-solid fa-guitar text-xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-white via-slate-200 to-indigo-300 bg-clip-text text-transparent">Circle of Fifths & Fretboard Studio</h1>
+                    <p class="text-xs text-slate-400">Interactive Chord Generator, Fretboard Visualizer & 4/4 Strumming Engine</p>
+                </div>
+            </div>
+
+            <!-- Global Tempo & Master Controls -->
+            <div class="flex items-center gap-4 bg-darkBg/80 px-4 py-2 rounded-xl border border-darkBorder shadow-inner">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">BPM</span>
+                    <input type="range" id="bpmRange" min="60" max="200" value="110" class="w-24 accent-indigo-500 cursor-pointer">
+                    <span id="bpmValue" class="mono text-sm font-bold text-indigo-400 w-8">110</span>
+                </div>
+                <div class="h-6 w-[1px] bg-darkBorder"></div>
+                <button id="masterPlayBtn" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-semibold text-sm transition-all shadow-lg shadow-indigo-600/30 active:scale-95">
+                    <i id="playIcon" class="fa-solid fa-play"></i>
+                    <span id="playText">Play Progression</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="max-w-7xl mx-auto px-4 py-6 flex-1 w-full grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Left Column: Circle of Fifths & Key Selector (5 Cols) -->
+        <div class="lg:col-span-5 flex flex-col gap-6">
+            
+            <!-- Circle of Fifths Widget Card -->
+            <div class="bg-darkCard border border-darkBorder rounded-2xl p-5 shadow-xl flex flex-col items-center relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+                
+                <div class="w-full flex items-center justify-between mb-4">
+                    <div>
+                        <h2 class="text-lg font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-circle-notch text-indigo-400"></i> Circle of Fifths
+                        </h2>
+                        <p class="text-xs text-slate-400">Click any key to select Major or Minor root</p>
+                    </div>
+                    <div class="flex items-center bg-darkBg rounded-lg p-1 border border-darkBorder text-xs">
+                        <button id="modeMajor" class="px-3 py-1.5 rounded-md font-semibold bg-indigo-600 text-white transition-all shadow">Major</button>
+                        <button id="modeMinor" class="px-3 py-1.5 rounded-md font-semibold text-slate-400 hover:text-white transition-all">Minor</button>
+                    </div>
+                </div>
+
+                <!-- SVG Circle of Fifths Canvas -->
+                <div class="relative w-full aspect-square max-w-[340px] flex items-center justify-center my-2">
+                    <svg id="circleSvg" viewBox="0 0 400 400" class="w-full h-full drop-shadow-2xl select-none">
+                        <!-- Rendered dynamically by JS -->
+                    </svg>
+                    <!-- Center Info Badge -->
+                    <div class="absolute inset-0 m-auto w-24 h-24 rounded-full bg-darkBg/90 border-2 border-indigo-500/50 flex flex-col items-center justify-center text-center shadow-xl backdrop-blur-md pointer-events-none">
+                        <span id="centerKeyLabel" class="text-lg font-black text-white">C</span>
+                        <span id="centerModeLabel" class="text-[10px] text-indigo-400 font-semibold uppercase tracking-widest">Major</span>
+                    </div>
+                </div>
+
+                <!-- Selected Key Details & Diatonic Chords -->
+                <div class="w-full mt-4 bg-darkBg/70 rounded-xl p-4 border border-darkBorder">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs text-slate-400 font-medium">Diatonic Chords in <span id="currentKeyDisplay" class="text-indigo-400 font-bold">C Major</span></span>
+                        <button id="previewKeyChordBtn" class="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-semibold"><i class="fa-solid fa-volume-high"></i> Strum Root</button>
+                    </div>
+                    <div id="diatonicChordsGrid" class="grid grid-cols-7 gap-1.5">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Strumming Pattern & Beat Visualizer -->
+            <div class="bg-darkCard border border-darkBorder rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-wave-square text-indigo-400"></i> Strumming Pattern (4/4)
+                        </h2>
+                        <p class="text-xs text-slate-400">Click slots to toggle Down (↓), Up (↑), or Rest (-)</p>
+                    </div>
+                    <select id="strumPresetSelect" class="bg-darkBg border border-darkBorder text-xs rounded-lg px-2.5 py-1.5 text-slate-200 font-medium focus:outline-none focus:border-indigo-500">
+                        <option value="pop1">Standard Pop (D-D-UDU)</option>
+                        <option value="rock1">Driving Rock (D-DU-DU)</option>
+                        <option value="ballad">Ballad Arpeggio (D-D-D-D)</option>
+                        <option value="syncopated">Syncopated Funk (D-UDU-DU)</option>
+                    </select>
+                </div>
+
+                <!-- Beat Indicator Bar (1-2-3-4) -->
+                <div class="grid grid-cols-4 gap-2 bg-darkBg/80 p-3 rounded-xl border border-darkBorder">
+                    <div id="beat1" class="flex flex-col items-center justify-center p-2 rounded-lg bg-darkCard border border-darkBorder transition-all">
+                        <span class="text-[10px] text-slate-400 font-bold">BEAT 1</span>
+                        <span class="text-sm font-black text-slate-300">1</span>
+                    </div>
+                    <div id="beat2" class="flex flex-col items-center justify-center p-2 rounded-lg bg-darkCard border border-darkBorder transition-all">
+                        <span class="text-[10px] text-slate-400 font-bold">BEAT 2</span>
+                        <span class="text-sm font-black text-slate-300">2</span>
+                    </div>
+                    <div id="beat3" class="flex flex-col items-center justify-center p-2 rounded-lg bg-darkCard border border-darkBorder transition-all">
+                        <span class="text-[10px] text-slate-400 font-bold">BEAT 3</span>
+                        <span class="text-sm font-black text-slate-300">3</span>
+                    </div>
+                    <div id="beat4" class="flex flex-col items-center justify-center p-2 rounded-lg bg-darkCard border border-darkBorder transition-all">
+                        <span class="text-[10px] text-slate-400 font-bold">BEAT 4</span>
+                        <span class="text-sm font-black text-slate-300">4</span>
+                    </div>
+                </div>
+
+                <!-- 8-Step Strum Grid -->
+                <div id="strumGrid" class="grid grid-cols-8 gap-2">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: Chord Progression Generator & 22-Fretboard (7 Cols) -->
+        <div class="lg:col-span-7 flex flex-col gap-6">
+
+            <!-- Chord Progression Generator Card -->
+            <div class="bg-darkCard border border-darkBorder rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-indigo-400"></i> Chord Progression Builder
+                        </h2>
+                        <p class="text-xs text-slate-400">Select preset or build your custom chord sequence</p>
+                    </div>
+                    <div class="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+                        <button class="preset-btn px-2.5 py-1 rounded-lg bg-darkBg hover:bg-indigo-600/30 border border-darkBorder text-xs font-semibold transition-all whitespace-nowrap" data-prog="I-V-vi-IV">I-V-vi-IV</button>
+                        <button class="preset-btn px-2.5 py-1 rounded-lg bg-darkBg hover:bg-indigo-600/30 border border-darkBorder text-xs font-semibold transition-all whitespace-nowrap" data-prog="ii-V-I">ii-V-I</button>
+                        <button class="preset-btn px-2.5 py-1 rounded-lg bg-darkBg hover:bg-indigo-600/30 border border-darkBorder text-xs font-semibold transition-all whitespace-nowrap" data-prog="I-vi-ii-V">I-vi-ii-V</button>
+                        <button class="preset-btn px-2.5 py-1 rounded-lg bg-darkBg hover:bg-indigo-600/30 border border-darkBorder text-xs font-semibold transition-all whitespace-nowrap" data-prog="vi-IV-I-V">vi-IV-I-V</button>
+                        <button id="clearProgBtn" class="px-2.5 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-semibold transition-all"><i class="fa-solid fa-trash-can"></i></button>
+                    </div>
+                </div>
+
+                <!-- Active Progression Slots Container -->
+                <div id="progressionSlots" class="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-darkBg/80 p-4 rounded-xl border border-darkBorder min-h-[100px] items-center">
+                    <!-- Populated by JS -->
+                </div>
+
+                <!-- Helper to click/add chords -->
+                <div class="flex items-center justify-between text-xs text-slate-400">
+                    <span>Click chords from the Diatonic list above or presets to populate progression. Click any active chord to inspect its guitar voicing.</span>
+                    <span id="activeProgInfo" class="text-indigo-400 font-semibold">Playing Step: 1 / 4</span>
+                </div>
+            </div>
+
+            <!-- Fully Visualised 22-Fret Guitar Fretboard -->
+            <div class="bg-darkCard border border-darkBorder rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-lg font-bold flex items-center gap-2">
+                            <i class="fa-solid fa-guitar text-indigo-400"></i> 22-Fret Guitar Fretboard Visualizer
+                        </h2>
+                        <p class="text-xs text-slate-400">Showing exact finger placements (frets & strings) for the active chord</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div id="activeChordBadge" class="px-3 py-1 rounded-lg bg-indigo-600/20 border border-indigo-500/40 text-indigo-300 font-bold text-sm tracking-wide">
+                            C Major
+                        </div>
+                        <button id="strumCurrentChordBtn" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-md shadow-indigo-600/20">
+                            <i class="fa-solid fa-volume-high"></i> Strum Chord
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Fretboard Container with Horizontal Scroll support -->
+                <div class="w-full overflow-x-auto bg-darkBg rounded-xl border border-darkBorder p-4 shadow-inner">
+                    <div id="fretboard" class="relative min-w-[900px] select-none py-4">
+                        <!-- Fretboard Rendered Dynamically via JS -->
+                    </div>
+                </div>
+
+                <!-- Fretboard Legend & Details -->
+                <div class="flex flex-wrap items-center justify-between gap-4 text-xs text-slate-400 pt-2 border-t border-darkBorder">
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-full bg-indigo-500 inline-block shadow-sm shadow-indigo-500"></span>
+                            <span>Root Note</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-3 h-3 rounded-full bg-violet-600 inline-block shadow-sm shadow-violet-600"></span>
+                            <span>Chord Tone</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-5 h-5 rounded bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-slate-300">X</span>
+                            <span>Muted String</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-5 h-5 rounded bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-slate-300">O</span>
+                            <span>Open String</span>
+                        </div>
+                    </div>
+                    <div class="mono text-[11px] text-slate-400">
+                        Tuning: E-A-D-G-B-E (Standard)
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-darkBorder py-4 text-center text-xs text-slate-500">
+        Circle of Fifths & Fretboard Studio &bull; Built with Web Audio API & Tailwind CSS
+    </footer>
+
+    <!-- JavaScript Application Logic -->
+    <script>
+        // --- MUSIC THEORY & DATA ---
+        const MAJOR_KEYS = [
+            { name: 'C', root: 0, rel: 'Am', accidentals: 0, x: 200, y: 50 },
+            { name: 'G', root: 7, rel: 'Em', accidentals: 1, x: 280, y: 72 },
+            { name: 'D', root: 2, rel: 'Bm', accidentals: 2, x: 340, y: 135 },
+            { name: 'A', root: 9, rel: 'F#m', accidentals: 3, x: 360, y: 215 },
+            { name: 'E', root: 4, rel: 'C#m', accidentals: 4, x: 335, y: 295 },
+            { name: 'B', root: 11, rel: 'G#m', accidentals: 5, x: 275, y: 350 },
+            { name: 'F#', root: 6, rel: 'D#m', accidentals: 6, x: 200, y: 370 },
+            { name: 'Db', root: 1, rel: 'Bbm', accidentals: -5, x: 125, y: 350 },
+            { name: 'Ab', root: 8, rel: 'Fm', accidentals: -4, x: 65, y: 295 },
+            { name: 'Eb', root: 3, rel: 'Cm', accidentals: -3, x: 40, y: 215 },
+            { name: 'Bb', root: 10, rel: 'Gm', accidentals: -2, x: 60, y: 135 },
+            { name: 'F', root: 5, rel: 'Dm', accidentals: -1, x: 120, y: 72 }
+        ];
+
+        const MINOR_KEYS = [
+            { name: 'Am', root: 9, rel: 'C', accidentals: 0, x: 200, y: 95 },
+            { name: 'Em', root: 4, rel: 'G', accidentals: 1, x: 260, y: 112 },
+            { name: 'Bm', root: 11, rel: 'D', accidentals: 2, x: 305, y: 155 },
+            { name: 'F#m', root: 6, rel: 'A', accidentals: 3, x: 320, y: 215 },
+            { name: 'C#m', root: 1, rel: 'E', accidentals: 4, x: 300, y: 275 },
+            { name: 'G#m', root: 8, rel: 'B', accidentals: 5, x: 255, y: 315 },
+            { name: 'D#m', root: 3, rel: 'F#', accidentals: 6, x: 200, y: 330 },
+            { name: 'Bbm', root: 10, rel: 'Db', accidentals: -5, x: 145, y: 315 },
+            { name: 'Fm', root: 5, rel: 'Ab', accidentals: -4, x: 100, y: 275 },
+            { name: 'Cm', root: 0, rel: 'Eb', accidentals: -3, x: 80, y: 215 },
+            { name: 'Gm', root: 7, rel: 'Bb', accidentals: -2, x: 95, y: 155 },
+            { name: 'Dm', root: 2, rel: 'F', accidentals: -1, x: 140, y: 112 }
+        ];
+
+        const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+        const FLAT_NAMES = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'];
+
+        // Guitar strings standard tuning MIDI notes: E2(40), A2(45), D3(50), G3(55), B3(59), E4(64)
+        const STRING_TUNINGS = [64, 59, 55, 50, 45, 40]; // High E to Low E
+        const STRING_NAMES = ['e', 'B', 'G', 'D', 'A', 'E'];
+
+        // Common chord database with guitar voicings (strings 0=High e to 5=Low E, -1 = muted, 0 = open, 1-22 = fret)
+        // Format: { name, type, rootNoteIndex, frets: [string5, string4, string3, string2, string1, string0] (Low E to high e order for easier lookup) }
+        const CHORD_DATABASE = {
+            // C Major family
+            'C': { root: 0, intervals: [0, 4, 7], frets: [-1, 3, 2, 0, 1, 0] },
+            'Dm': { root: 2, intervals: [0, 3, 7], frets: [-1, -1, 0, 2, 3, 1] },
+            'Em': { root: 4, intervals: [0, 3, 7], frets: [0, 2, 2, 0, 0, 0] },
+            'F': { root: 5, intervals: [0, 4, 7], frets: [1, 3, 3, 2, 1, 1] },
+            'G': { root: 7, intervals: [0, 4, 7], frets: [3, 2, 0, 0, 3, 3] },
+            'Am': { root: 9, intervals: [0, 3, 7], frets: [-1, 0, 2, 2, 1, 0] },
+            'Bdim': { root: 11, intervals: [0, 3, 6], frets: [-1, 2, 3, 4, 3, -1] },
+            
+            // G Major family
+            'Am': { root: 9, intervals: [0, 3, 7], frets: [-1, 0, 2, 2, 1, 0] },
+            'Bm': { root: 11, intervals: [0, 3, 7], frets: [-1, 2, 4, 4, 3, 2] },
+            'C': { root: 0, intervals: [0, 4, 7], frets: [-1, 3, 2, 0, 1, 0] },
+            'D': { root: 2, intervals: [0, 4, 7], frets: [-1, -1, 0, 2, 3, 2] },
+            'Em': { root: 4, intervals: [0, 3, 7], frets: [0, 2, 2, 0, 0, 0] },
+            'F#dim': { root: 6, intervals: [0, 3, 6], frets: [2, 4, 4, 2, 2, 2] },
+
+            // D Major family
+            'D': { root: 2, intervals: [0, 4, 7], frets: [-1, -1, 0, 2, 3, 2] },
+            'Em': { root: 4, intervals: [0, 3, 7], frets: [0, 2, 2, 0, 0, 0] },
+            'F#m': { root: 6, intervals: [0, 3, 7], frets: [2, 4, 4, 2, 2, 2] },
+            'G': { root: 7, intervals: [0, 4, 7], frets: [3, 2, 0, 0, 3, 3] },
+            'A': { root: 9, intervals: [0, 4, 7], frets: [-1, 0, 2, 2, 2, 0] },
+            'Bm': { root: 11, intervals: [0, 3, 7], frets: [-1, 2, 4, 4, 3, 2] },
+            'C#dim': { root: 1, intervals: [0, 3, 6], frets: [-1, 4, 5, 6, 5, -1] },
+
+            // A Major family
+            'A': { root: 9, intervals: [0, 4, 7], frets: [-1, 0, 2, 2, 2, 0] },
+            'Bm': { root: 11, intervals: [0, 3, 7], frets: [-1, 2, 4, 4, 3, 2] },
+            'C#m': { root: 1, intervals: [0, 3, 7], frets: [-1, 4, 6, 6, 5, 4] },
+            'D': { root: 2, intervals: [0, 4, 7], frets: [-1, -1, 0, 2, 3, 2] },
+            'E': { root: 4, intervals: [0, 4, 7], frets: [0, 2, 2, 1, 0, 0] },
+            'F#m': { root: 6, intervals: [0, 3, 7], frets: [2, 4, 4, 2, 2, 2] },
+            'G#dim': { root: 8, intervals: [0, 3, 6], frets: [-1, -1, 0, 1, 0, 1] },
+
+            // E Major family
+            'E': { root: 4, intervals: [0, 4, 7], frets: [0, 2, 2, 1, 0, 0] },
+            'F#m': { root: 6, intervals: [0, 3, 7], frets: [2, 4, 4, 2, 2, 2] },
+            'G#m': { root: 8, intervals: [0, 3, 7], frets: [4, 6, 6, 4, 4, 4] },
+            'A': { root: 9, intervals: [0, 4, 7], frets: [-1, 0, 2, 2, 2, 0] },
+            'B': { root: 11, intervals: [0, 4, 7], frets: [-1, 2, 4, 4, 4, 2] },
+            'C#m': { root: 1, intervals: [0, 3, 7], frets: [-1, 4, 6, 6, 5, 4] },
+            'D#dim': { root: 3, intervals: [0, 3, 6], frets: [-1, 6, 7, 8, 7, -1] },
+
+            // F Major family
+            'F': { root: 5, intervals: [0, 4, 7], frets: [1, 3, 3, 2, 1, 1] },
+            'Gm': { root: 7, intervals: [0, 3, 7], frets: [3, 5, 5, 3, 3, 3] },
+            'Am': { root: 9, intervals: [0, 3, 7], frets: [-1, 0, 2, 2, 1, 0] },
+            'Bb': { root: 10, intervals: [0, 4, 7], frets: [-1, 1, 3, 3, 3, 1] },
+            'C': { root: 0, intervals: [0, 4, 7], frets: [-1, 3, 2, 0, 1, 0] },
+            'Dm': { root: 2, intervals: [0, 3, 7], frets: [-1, -1, 0, 2, 3, 1] },
+            'Edim': { root: 4, intervals: [0, 3, 6], frets: [0, 1, 2, 3, -1, -1] },
+
+            // Flat keys & Minor keys generic fallback
+            'Bb': { root: 10, intervals: [0, 4, 7], frets: [-1, 1, 3, 3, 3, 1] },
+            'Cm': { root: 0, intervals: [0, 3, 7], frets: [-1, 3, 5, 5, 4, 3] },
+            'Eb': { root: 3, intervals: [0, 4, 7], frets: [-1, 6, 8, 8, 8, 6] },
+            'Ab': { root: 8, intervals: [0, 4, 7], frets: [4, 6, 6, 5, 4, 4] },
+            'Db': { root: 1, intervals: [0, 4, 7], frets: [-1, 4, 6, 6, 6, 4] },
+            'Gb': { root: 6, intervals: [0, 4, 7], frets: [2, 4, 4, 3, 2, 2] },
+            'Cb': { root: 11, intervals: [0, 4, 7], frets: [-1, 2, 4, 4, 4, 2] },
+            'Fm': { root: 5, intervals: [0, 3, 7], frets: [1, 3, 3, 1, 1, 1] },
+            'Bbm': { root: 10, intervals: [0, 3, 7], frets: [-1, 1, 3, 3, 2, 1] },
+            'Ebm': { root: 3, intervals: [0, 3, 7], frets: [-1, 6, 8, 8, 7, 6] },
+            'G#m': { root: 8, intervals: [0, 3, 7], frets: [4, 6, 6, 4, 4, 4] },
+            'D#m': { root: 3, intervals: [0, 3, 7], frets: [-1, 6, 8, 8, 7, 6] },
+            'A#m': { root: 1, intervals: [0, 3, 7], frets: [-1, 1, 3, 3, 2, 1] }
+        };
+
+        // --- APP STATE ---
+        let currentMode = 'major'; // 'major' or 'minor'
+        let selectedKeyIndex = 0; // C Major
+        let currentKeyName = 'C';
+        let currentProgression = ['I', 'V', 'vi', 'IV'];
+        let activeChordIndex = 0;
+        let isPlaying = false;
+        let bpm = 110;
+        let playInterval = null;
+        let currentBeat = 0; // 0 to 3
+        let currentStep = 0; // 0 to 7 in 8-step strum pattern
+        
+        // Strumming pattern: 'D' = Down, 'U' = Up, '-' = Rest
+        let strumPattern = ['D', '-', 'D', 'U', '-', 'U', 'D', 'U'];
+
+        // Audio Context setup
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // --- SYNTHESIZER & AUDIO PLAYBACK ---
+        function playTone(freq, type = 'sine', duration = 0.8, gainVal = 0.15) {
+            initAudio();
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+
+                gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        function playMetronomeClick(high = false) {
+            initAudio();
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(high ? 1200 : 800, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.05);
+            } catch(e) {}
+        }
+
+        // Convert note name and octave to frequency
+        function noteToFreq(noteName, octave = 4) {
+            const semitones = { 'C': 0, 'C#': 1, 'Db': 1, 'D': 2, 'D#': 3, 'Eb': 3, 'E': 4, 'F': 5, 'F#': 6, 'Gb': 6, 'G': 7, 'G#': 8, 'Ab': 8, 'A': 9, 'A#': 10, 'Bb': 10, 'B': 11 };
+            const baseC0 = 16.35;
+            let semitone = semitones[noteName] || 0;
+            let midi = 12 * (octave + 1) + semitone;
+            return 440 * Math.pow(2, (midi - 69) / 12);
+        }
+
+        // Play chord voicing (arpeggiated or strummed)
+        function playChordAudio(chordName, isStrumUp = false) {
+            const chordData = getChordVoicingData(chordName);
+            if (!chordData || !chordData.frets) return;
+
+            initAudio();
+            const frets = chordData.frets; // [string5 to string0] Low E to high e
+            const delayStep = isStrumUp ? 0.04 : 0.03;
+
+            frets.forEach((fret, stringIdx) => {
+                if (fret >= 0) {
+                    const midiNote = STRING_TUNINGS[5 - stringIdx] + fret; // STRING_TUNINGS is high e to low e, so invert index
+                    const freq = 440 * Math.pow(2, (midiNote - 69) / 12);
+                    const strumDelay = isStrumUp ? (5 - stringIdx) * delayStep : stringIdx * delayStep;
+                    
+                    setTimeout(() => {
+                        playTone(freq, 'sawtooth', 1.2, 0.08);
+                    }, strumDelay * 1000);
+                }
+            });
+        }
+
+        // --- MUSIC THEORY CALCULATIONS ---
+        const MAJOR_SCALE_INTERVALS = [0, 2, 4, 5, 7, 9, 11];
+        const MINOR_SCALE_INTERVALS = [0, 2, 3, 5, 7, 8, 10];
+
+        function getDiatonicChords(rootNoteIndex, isMinor = false) {
+            const intervals = isMinor ? MINOR_SCALE_INTERVALS : MAJOR_SCALE_INTERVALS;
+            const chordQualitiesMajor = ['', 'm', 'm', '', '', 'm', 'dim'];
+            const chordQualitiesMinor = ['m', 'dim', '', 'm', 'm', '', ''];
+            const qualities = isMinor ? chordQualitiesMinor : chordQualitiesMajor;
+            const romanMajor = ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii°'];
+            const romanMinor = ['i', 'ii°', 'III', 'iv', 'v', 'VI', 'VII'];
+            const romans = isMinor ? romanMinor : romanMajor;
+
+            let chords = [];
+            for (let i = 0; i < 7; i++) {
+                let noteIdx = (rootNoteIndex + intervals[i]) % 12;
+                let noteName = NOTE_NAMES[noteIdx];
+                let quality = qualities[i];
+                let chordName = noteName + quality;
+                chords.push({
+                    roman: romans[i],
+                    name: chordName,
+                    rootIndex: noteIdx,
+                    quality: quality
+                });
+            }
+            return chords;
+        }
+
+        // Get voicing data for any chord name
+        function getChordVoicingData(chordName) {
+            if (CHORD_DATABASE[chordName]) {
+                return CHORD_DATABASE[chordName];
+            }
+            // Fallback generated voicing if not explicitly in DB
+            return {
+                frets: [-1, 3, 5, 5, 5, 3] // generic barre chord fallback
+            };
+        }
+
+        // --- RENDER CIRCLE OF FIFTHS SVG ---
+        function renderCircleOfFifths() {
+            const svg = document.getElementById('circleSvg');
+            let html = '';
+
+            const keys = currentMode === 'major' ? MAJOR_KEYS : MINOR_KEYS;
+
+            // Outer ring and background ornaments
+            html += `<circle cx="200" cy="200" r="185" fill="none" stroke="#1e293b" stroke-width="2"/>`;
+            html += `<circle cx="200" cy="200" r="130" fill="none" stroke="#1e293b" stroke-width="1.5" stroke-dasharray="4 4"/>`;
+            html += `<circle cx="200" cy="200" r="75" fill="none" stroke="#1e293b" stroke-width="1"/>`;
+
+            keys.forEach((k, idx) => {
+                let isSelected = (idx === selectedKeyIndex);
+                let fillColor = isSelected ? '#6366f1' : '#131b2e';
+                let strokeColor = isSelected ? '#818cf8' : '#1e293b';
+                let textColor = isSelected ? '#ffffff' : '#cbd5e1';
+
+                // Sector or Pill button for key
+                html += `
+                    <g class="cursor-pointer group" onclick="selectKey(${idx})">
+                        <circle cx="${k.x}" cy="${k.y}" r="26" fill="${fillColor}" stroke="${strokeColor}" stroke-width="${isSelected ? 3 : 1.5}" class="transition-all hover:scale-110 drop-shadow-md"/>
+                        <text x="${k.x}" y="${k.y - 3}" fill="${textColor}" font-size="13" font-weight="bold" text-anchor="middle" dominant-baseline="middle" class="pointer-events-none">${k.name}</text>
+                        <text x="${k.x}" y="${k.y + 11}" fill="${isSelected ? '#c7d2fe' : '#64748b'}" font-size="9" text-anchor="middle" dominant-baseline="middle" class="pointer-events-none">${k.rel}</text>
+                    </g>
+                `;
+            });
+
+            svg.innerHTML = html;
+        }
+
+        // --- RENDER 22-FRET GUITAR FRETBOARD ---
+        function renderFretboard() {
+            const fretboardEl = document.getElementById('fretboard');
+            const currentProg = currentProgression;
+            const activeRoman = currentProg[activeChordIndex] || currentProg[0];
+            const diatonic = getDiatonicChords(selectedKeyIndex, currentMode === 'minor');
+            
+            // Find chord object matching active roman numeral
+            let chordObj = diatonic.find(c => c.roman.toLowerCase() === activeRoman.toLowerCase()) || diatonic[0];
+            let chordName = chordObj ? chordObj.name : 'C';
+
+            // Update UI badge
+            document.getElementById('activeChordBadge').innerText = `${chordName} (${activeRoman})`;
+
+            let voicing = getChordVoicingData(chordName);
+            let frets = voicing.frets; // [string 5 to 0] -> Low E to high e
+
+            // Fretboard layout parameters
+            const numFrets = 22;
+            const fretWidths = [0, 85, 80, 75, 70, 65, 60, 55, 52, 48, 45, 42, 40, 38, 36, 34, 32, 30, 28, 26, 25, 24, 23];
+            let cumulativeX = [0];
+            for(let i=1; i<=numFrets; i++) {
+                cumulativeX[i] = cumulativeX[i-1] + fretWidths[i];
+            }
+            const totalWidth = cumulativeX[numFrets] + 60;
+
+            let svgContent = '';
+
+            // Fretboard Wood Background
+            svgContent += `<rect x="0" y="0" width="${totalWidth}" height="220" rx="12" fill="#0f172a" stroke="#1e293b" stroke-width="2"/>`;
+
+            // Fret wire lines & markers
+            for (let f = 0; f <= numFrets; f++) {
+                let x = 50 + cumulativeX[f];
+                let isNut = (f === 0);
+                let strokeColor = isNut ? '#cbd5e1' : '#475569';
+                let strokeWidth = isNut ? 6 : 2;
+                
+                svgContent += `<line x1="${x}" y1="20" x2="${x}" y2="200" stroke="${strokeColor}" stroke-width="${strokeWidth}"/>`;
+
+                // Fret numbers on top
+                if (f > 0) {
+                    svgContent += `<text x="${x - fretWidths[f]/2}" y="12" fill="#64748b" font-size="10" font-weight="600" text-anchor="middle">${f}</text>`;
+                }
+
+                // Fret inlay dots (3, 5, 7, 9, 15, 17, 19, 21 single; 12 double)
+                if (f === 3 || f === 5 || f === 7 || f === 9 || f === 15 || f === 17 || f === 19 || f === 21) {
+                    let inlayX = x - fretWidths[f]/2;
+                    svgContent += `<circle cx="${inlayX}" cy="110" r="5" fill="#334155" opacity="0.6"/>`;
+                } else if (f === 12) {
+                    let inlayX = x - fretWidths[f]/2;
+                    svgContent += `<circle cx="${inlayX}" cy="80" r="4" fill="#334155" opacity="0.6"/>`;
+                    svgContent += `<circle cx="${inlayX}" cy="140" r="4" fill="#334155" opacity="0.6"/>`;
+                }
+            }
+
+            // Guitar Strings (6 strings: Low E (index 0 in frets array) to High e (index 5))
+            // Positions from top to bottom: y = 35, 65, 95, 125, 155, 185
+            const stringY = [35, 65, 95, 125, 155, 185];
+            const stringGauges = [3.5, 3.0, 2.5, 2.0, 1.5, 1.0];
+
+            for (let s = 0; s < 6; s++) {
+                let y = stringY[s];
+                // String line
+                svgContent += `<line x1="50" y1="${y}" x2="${50 + cumulativeX[numFrets]}" y2="${y}" stroke="#94a3b8" stroke-width="${stringGauges[s]}"/>`;
+                
+                // String label on left
+                svgContent += `<text x="25" y="${y + 4}" fill="#94a3b8" font-size="12" font-weight="bold" text-anchor="middle">${STRING_NAMES[5-s]}</text>`;
+            }
+
+            // Render Finger Placements / Open / Muted indicators for the chord
+            frets.forEach((fret, stringIdx) => {
+                // stringIdx: 0 = Low E (top string visually if s=5), 5 = high e (bottom string visually if s=0)
+                // Wait, STRING_TUNINGS order is High e to low e, let's map correctly:
+                // frets array: [Low E, A, D, G, B, high e] -> indices 0 to 5.
+                // stringY index: 0 is high e (top in standard tab), so stringIdx 0 (Low E) corresponds to stringY[5].
+                let visualStringIndex = 5 - stringIdx; 
+                let y = stringYvisual = stringY[visualStringIndex];
+
+                if (fret === -1) {
+                    // Muted string indicator (X) on nut area
+                    svgContent += `<text x="32" y="${y + 4}" fill="#ef4444" font-size="12" font-weight="bold" text-anchor="middle">×</text>`;
+                } else if (fret === 0) {
+                    // Open string indicator (O) on nut area
+                    svgContent += `<circle cx="32" cy="${y}" r="8" fill="none" stroke="#22c55e" stroke-width="2"/>`;
+                    svgContent += `<text x="32" y="${y + 3}" fill="#22c55e" font-size="9" font-weight="bold" text-anchor="middle">O</text>`;
+                } else {
+                    // Fret finger marker
+                    let prevX = 50 + cumulativeX[fret - 1];
+                    let currX = 50 + cumulativeX[fret];
+                    let markerX = (prevX + currX) / 2;
+                    let isRoot = (chordObj && (STRING_TUNINGS[stringIdx] + fret) % 12 === chordObj.rootIndex);
+
+                    let bgColor = isRoot ? '#6366f1' : '#7c3aed';
+                    let glowColor = isRoot ? 'rgba(99, 102, 241, 0.6)' : 'rgba(124, 58, 237, 0.6)';
+
+                    svgContent += `
+                        <g>
+                            <circle cx="${markerX}" cy="${y}" r="11" fill="${bgColor}" stroke="#ffffff" stroke-width="2" filter="drop-shadow(0px 2px 4px ${glowColor})"/>
+                            <text x="${markerX}" y="${y + 1}" fill="#ffffff" font-size="10" font-weight="bold" text-anchor="middle" dominant-baseline="middle">${fret}</text>
+                        </g>
+                    `;
+                }
+            });
+
+            fretboardEl.innerHTML = `<svg viewBox="0 0 ${totalWidth + 20} 220" class="w-full h-auto select-none">${svgContent}</svg>`;
+        }
+
+        // --- RENDER DIATONIC CHORDS GRID ---
+        function renderDiatonicChords() {
+            const container = document.getElementById('diatonicChordsGrid');
+            const diatonic = getDiatonicChords(selectedKeyIndex, currentMode === 'minor');
+            
+            let html = '';
+            diatonic.forEach((c, idx) => {
+                html += `
+                    <div onclick="previewChord('${c.name}')" class="bg-darkCard hover:bg-indigo-600/20 border border-darkBorder hover:border-indigo-500/50 rounded-lg p-2 flex flex-col items-center cursor-pointer transition-all group">
+                        <span class="text-[10px] text-slate-400 group-hover:text-indigo-300 font-semibold">${c.roman}</span>
+                        <span class="text-xs font-bold text-white mt-0.5">${c.name}</span>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // --- RENDER PROGRESSION SLOTS ---
+        function renderProgressionSlots() {
+            const container = document.getElementById('progressionSlots');
+            const diatonic = getDiatonicChords(selectedKeyIndex, currentMode === 'minor');
+
+            let html = '';
+            currentProgression.forEach((roman, idx) => {
+                let chordObj = diatonic.find(c => c.roman.toLowerCase() === roman.toLowerCase()) || diatonic[0];
+                let chordName = chordObj ? chordObj.name : roman;
+                let isActive = (idx === activeChordIndex && isPlaying);
+
+                html += `
+                    <div onclick="setActiveChord(${idx})" class="relative group bg-darkCard border ${isActive ? 'border-indigo-500 bg-indigo-600/10 glow-active' : 'border-darkBorder hover:border-indigo-500/40'} rounded-xl p-3 flex flex-col items-center justify-center cursor-pointer transition-all">
+                        <span class="text-[10px] text-slate-400 font-semibold mb-0.5">Step ${idx + 1}: ${roman}</span>
+                        <span class="text-base font-black text-white">${chordName}</span>
+                        
+                        <div class="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1">
+                            <button onclick="event.stopPropagation(); removeProgressionStep(${idx})" class="text-slate-500 hover:text-red-400 text-xs p-1"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+            document.getElementById('activeProgInfo').innerText = `Playing Step: ${activeChordIndex + 1} / ${currentProgression.length}`;
+        }
+
+        // --- RENDER STRUMMING PATTERN GRID ---
+        function renderStrumGrid() {
+            const container = document.getElementById('strumGrid');
+            let html = '';
+            strumPattern.forEach((action, idx) => {
+                let icon = action === 'D' ? '<i class="fa-solid fa-arrow-down text-indigo-400"></i>' : (action === 'U' ? '<i class="fa-solid fa-arrow-up text-violet-400"></i>' : '<i class="fa-solid fa-minus text-slate-600"></i>');
+                let isActiveStep = (isPlaying && currentStep === idx);
+
+                html += `
+                    <div onclick="toggleStrumStep(${idx})" class="bg-darkBg hover:bg-darkCard border ${isActiveStep ? 'border-indigo-500 bg-indigo-600/20 shadow-lg shadow-indigo-500/20' : 'border-darkBorder'} rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 cursor-pointer transition-all">
+                        <span class="text-[10px] text-slate-500 font-bold">${idx + 1}</span>
+                        <div class="text-lg h-7 flex items-center justify-center">${icon}</div>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">${action}</span>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // --- INTERACTION HANDLERS ---
+        window.selectKey = function(idx) {
+            selectedKeyIndex = idx;
+            const keys = currentMode === 'major' ? MAJOR_KEYS : MINOR_KEYS;
+            currentKeyName = keys[idx].name;
+            document.getElementById('currentKeyDisplay').innerText = `${currentKeyName} ${currentMode === 'major' ? 'Major' : 'Minor'}`;
+            document.getElementById('centerKeyLabel').innerText = currentKeyName;
+            document.getElementById('centerModeLabel').innerText = currentMode;
+
+            renderCircleOfFifths();
+            renderDiatonicChords();
+            renderFretboard();
+            renderProgressionSlots();
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('modeMajor').className = mode === 'major' ? 'px-3 py-1.5 rounded-md font-semibold bg-indigo-600 text-white transition-all shadow' : 'px-3 py-1.5 rounded-md font-semibold text-slate-400 hover:text-white transition-all';
+            document.getElementById('modeMinor').className = mode === 'minor' ? 'px-3 py-1.5 rounded-md font-semibold bg-indigo-600 text-white transition-all shadow' : 'px-3 py-1.5 rounded-md font-semibold text-slate-400 hover:text-white transition-all';
+            selectedKeyIndex = 0; // reset to C
+            selectKey(0);
+        }
+
+        window.previewChord = function(chordName) {
+            playChordAudio(chordName);
+            // Also find if in diatonic and highlight
+            const diatonic = getDiatonicChords(selectedKeyIndex, currentMode === 'minor');
+            let matchIdx = diatonic.findIndex(c => c.name === chordName);
+            if (matchIdx !== -1) {
+                // temporarily set active chord to match roman
+                let matchRoman = diatonic[matchIdx].roman;
+                let progIdx = currentProgression.indexOf(matchRoman);
+                if (progIdx !== -1) {
+                    activeChordIndex = progIdx;
+                }
+            }
+            renderFretboard();
+            renderProgressionSlots();
+        }
+
+        window.setActiveChord = function(idx) {
+            activeChordIndex = idx;
+            const diatonic = getDiatonicChords(selectedKeyIndex, currentMode === 'minor');
+            let roman = currentProgression[idx];
+            let chordObj = diatonic.find(c => c.roman.toLowerCase() === roman.toLowerCase()) || diatonic[0];
+            if (chordObj) {
+                playChordAudio(chordObj.name);
+            }
+            renderFretboard();
+            renderProgressionSlots();
+        }
+
+        window.removeProgressionStep = function(idx) {
+            if (currentProgression.length <= 1) return;
+            currentProgression.splice(idx, 1);
+            if (activeChordIndex >= currentProgression.length) {
+                activeChordIndex = 0;
+            }
+            renderProgressionSlots();
+            renderFretboard();
+        }
+
+        window.toggleStrumStep = function(idx) {
+            if (strumPattern[idx] === 'D') strumPattern[idx] = 'U';
+            else if (strumPattern[idx] === 'U') strumPattern[idx] = '-';
+            else strumPattern[idx] = 'D';
+            renderStrumGrid();
+        }
+
+        // --- PLAYBACK ENGINE (METRONOME & STRUMMING LOOP) ---
+        function startPlayback() {
+            if (isPlaying) {
+                stopPlayback();
+                return;
+            }
+            initAudio();
+            isPlaying = true;
+            document.getElementById('playIcon').className = 'fa-solid fa-stop';
+            document.getElementById('playText').innerText = 'Stop Playback';
+
+            currentStep = 0;
+            currentBeat = 0;
+            
+            // 8 steps per 4/4 bar -> each step is 1/8 note = 60 / bpm / 2 seconds
+            const stepIntervalMs = (60 / bpm / 2) * 1000;
+
+            playStep();
+            playInterval = setInterval(playStep, stepIntervalMs);
+        }
+
+        function stopPlayback() {
+            isPlaying = false;
+            clearInterval(playInterval);
+            document.getElementById('playIcon').className = 'fa-solid fa-play';
+            document.getElementById('playText').innerText = 'Play Progression';
+
+            // Reset beat highlights
+            for (let b = 1; b <= 4; b++) {
+                document.getElementById(`beat${b}`).className = 'flex flex-col items-center justify-center p-2 rounded-lg bg-darkCard border border-darkBorder transition-all';
+            }
+            renderStrumGrid();
+        }
+
+        function playStep() {
+            // Determine beat (0, 2, 4, 6 are downbeats on 1, 2, 3, 4)
+            if (currentStep % 2 === 0) {
+                currentBeat = currentStep / 2; // 0, 1, 2, 3
+                playMetronomeClick(currentBeat === 0);
+                
+                // Highlight beat box
+                for (let b = 0; b < 4; b++) {
+                    let beatEl = document.getElementById(`beat${b + 1}`);
+                    if (b === currentBeat) {
+                        beatEl.className = 'flex flex-col items-center justify-center p-2 rounded-lg bg-indigo-600/20 border border-indigo-500 shadow-md shadow-indigo-500/30 transition-all scale-105';
+                    } else {
+                        beatEl.className = 'flex flex-col items-center justify-center p-2 rounded-lg bg-darkCard border border-darkBorder transition-all';
+                    }
+                }
+            }
+
+            // Strum action
+            let action = strumPattern[currentStep];
+            if (action !== '-') {
+                const diatonic = getDiatonicChords(selectedKeyIndex, currentMode === 'minor');
+                let roman = currentProgression[activeChordIndex];
+                let chordObj = diatonic.find(c => c.roman.toLowerCase() === roman.toLowerCase()) || diatonic[0];
+                if (chordObj) {
+                    playChordAudio(chordObj.name, action === 'U');
+                }
+            }
+
+            renderStrumGrid();
+
+            // Advance step (8 steps total per measure, every 2 measures advance chord in progression)
+            currentStep++;
+            if (currentStep >= 8) {
+                currentStep = 0;
+                // Advance chord in progression every 1 full bar (or 2 bars depending on preference)
+                activeChordIndex = (activeChordIndex + 1) % currentProgression.length;
+                renderProgressionSlots();
+                renderFretboard();
+            }
+        }
+
+        // --- EVENT LISTENERS INIT ---
+        document.addEventListener('DOMContentLoaded', () => {
+            renderCircleOfFifths();
+            renderDiatonicChords();
+            renderFretboard();
+            renderProgressionSlots();
+            renderStrumGrid();
+
+            // Mode toggle buttons
+            document.getElementById('modeMajor').addEventListener('click', () => setMode('major'));
+            document.getElementById('modeMinor').addEventListener('click', () => setMode('minor'));
+
+            // Master Play / Stop button
+            document.getElementById('masterPlayBtn').addEventListener('click', startPlayback);
+
+            // BPM slider
+            const bpmRange = document.getElementById('bpmRange');
+            const bpmValue = document.getElementById('bpmValue');
+            bpmRange.addEventListener('input', (e) => {
+                bpm = parseInt(e.target.value);
+                bpmValue.innerText = bpm;
+                if (isPlaying) {
+                    clearInterval(playInterval);
+                    const stepIntervalMs = (60 / bpm / 2) * 1000;
+                    playInterval = setInterval(playStep, stepIntervalMs);
+                }
+            });
+
+            // Preset Strumming patterns
+            document.getElementById('strumPresetSelect').addEventListener('change', (e) => {
+                const val = e.target.value;
+                if (val === 'pop1') strumPattern = ['D', '-', 'D', 'U', '-', 'U', 'D', 'U'];
+                else if (val === 'rock1') strumPattern = ['D', '-', 'D', 'U', '-', 'D', 'U', '-'];
+                else if (val === 'ballad') strumPattern = ['D', '-', 'D', '-', 'D', '-', 'D', '-'];
+                else if (val === 'syncopated') strumPattern = ['D', 'U', 'D', 'U', '-', 'U', 'D', 'U'];
+                renderStrumGrid();
+            });
+
+            // Chord Progression Presets
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    let progStr = e.target.getAttribute('data-prog');
+                    currentProgression = progStr.split('-');
+                    activeChordIndex = 0;
+                    renderProgressionSlots();
+                    renderFretboard();
+                });
+            });
+
+            // Clear progression
+            document.getElementById('clearProgBtn').addEventListener('click', () => {
+                currentProgression = ['I'];
+                activeChordIndex = 0;
+                renderProgressionSlots();
+                renderFretboard();
+            });
+
+            // Strum current chord button
+            document.getElementById('strumCurrentChordBtn').addEventListener('click', () => {
+                const diatonic = getDiatonicChords(selectedKeyIndex, currentMode === 'minor');
+                let roman = currentProgression[activeChordIndex];
+                let chordObj = diatonic.find(c => c.roman.toLowerCase() === roman.toLowerCase()) || diatonic[0];
+                if (chordObj) {
+                    playChordAudio(chordObj.name);
+                }
+            });
+
+            // Preview key root chord
+            document.getElementById('previewKeyChordBtn').addEventListener('click', () => {
+                const diatonic = getDiatonicChords(selectedKeyIndex, currentMode === 'minor');
+                if (diatonic[0]) {
+                    playChordAudio(diatonic[0].name);
+                }
+            });
+        });
+    </script>
+</body>
+</html>
